@@ -3,6 +3,8 @@ Every integer seed produces a different, valid website layout -> effectively inf
 import json
 import random
 
+ALL_SECTIONS = ["hero", "features", "stats", "gallery", "testimonials", "pricing", "cta"]
+
 MOODS = {
     "any": dict(dark=None, radius=(4, 28), fonts=None),
     "clean": dict(dark=False, radius=(6, 14), fonts=[1, 2]),
@@ -59,6 +61,16 @@ def _palette(r, dark):
                 on_a="#ffffff", line=f"hsl({h},25%,86%)")
 
 
+def _nav(r, brand, js):
+    style = r.choice(["split", "center"])
+    links = "".join(f'<a href="#{s}">{s.title()}</a>' for s in ["features", "pricing", "contact"])
+    btn = '<button class="menu-btn" aria-label="Menu" aria-expanded="false">☰</button>' if js else ""
+    cls = f"nav nav-{style}"
+    html = (f'<header class="{cls}"><div class="wrap nav-in"><a class="brand" href="#top">{brand}</a>'
+            f'<nav class="links">{links}<a class="btn small" href="#contact">Get started</a></nav>{btn}</div></header>')
+    return html
+
+
 def _hero(r, topic, brand):
     v = r.choice(["center", "split", "left"])
     h = r.choice(HEADLINES).format(t=topic)
@@ -108,6 +120,12 @@ def _pricing(r):
 def _cta():
     return ('<section class="sec" id="contact"><div class="wrap cta"><h2>Ready to get started?</h2>'
             '<p>Create your free account in under a minute.</p><a class="btn alt" href="#top">Create account</a></div></section>')
+
+
+def _footer(brand):
+    return (f'<footer class="foot"><div class="wrap frow"><strong>{brand}</strong>'
+            '<nav><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#contact">Contact</a></nav>'
+            f'<small>© 2026 {brand}. All rights reserved.</small></div></footer>')
 
 
 def _css(r, p, mood, js):
@@ -188,179 +206,40 @@ blockquote p{{color:var(--text);font-size:1.15rem}}blockquote footer{{margin-top
     return css
 
 
-PAGES = {
-    "home": ("Home", ["hero", "features", "stats", "testimonials", "gallery", "pricing", "cta"]),
-    "about": ("About", ["head", "story", "stats", "team", "testimonials", "cta"]),
-    "services": ("Services", ["head", "features", "process", "pricing", "faq", "cta"]),
-    "pricing": ("Pricing", ["head", "pricing", "faq", "cta"]),
-    "gallery": ("Gallery", ["head", "gallery", "testimonials", "cta"]),
-    "blog": ("Blog", ["head", "blog", "cta"]),
-    "contact": ("Contact", ["head", "contact", "faq"]),
-    "faq": ("FAQ", ["head", "faq", "cta"]),
-}
-LEVELS = {"easy": 2, "medium": 3, "hard": 99}  # sections kept per page; medium and easy still end with a call to action
-HEADS = {
-    "about": ("About us", "Who we are and why we do this work."),
-    "services": ("What we do", "Practical help, from the first call to launch day."),
-    "pricing": ("Pricing", "Pick a plan now and change it whenever you like."),
-    "gallery": ("Our work", "A look at recent projects."),
-    "blog": ("Latest from the blog", "Guides, news and stories from our team."),
-    "contact": ("Get in touch", "Send a message and we will reply within one working day."),
-    "faq": ("Questions, answered", "Quick answers to what people ask most."),
-}
-NAMES = [("Ana Rivera", "Founder"), ("Dev Patel", "Engineering"), ("Mia Chen", "Design"), ("Leo Brandt", "Support")]
-FAQS = [("How do I get started?", "Create a free account and follow the short setup guide."),
-        ("Can I cancel any time?", "Yes. There are no contracts and no cancellation fees."),
-        ("Do you offer support?", "Every plan includes email support, and Pro adds priority replies."),
-        ("Is my data safe?", "Data is encrypted in transit and at rest, and you always own it.")]
-POSTS = ["5 ways to save time every week", "What we learned this year", "A beginner's guide to getting started",
-         "Behind the scenes with our team", "Customer story: from idea to launch", "Small changes, big results"]
-
-
-def _pick(key, level):
-    secs = PAGES[key][1]
-    out = secs[:LEVELS.get(level, 3)]
-    if level != "hard" and secs[-1] == "cta" and "cta" not in out:
-        out.append("cta")
-    return out
-
-
-def _nav(r, brand, js, keys, cur, fname):
-    style = r.choice(["split", "center"])
-    links = "".join(f'<a href="{fname(k)}"' + (' class="on" aria-current="page"' if k == cur else "") + f'>{PAGES[k][0]}</a>' for k in keys)
-    btn = '<button class="menu-btn" aria-label="Menu" aria-expanded="false">☰</button>' if js else ""
-    return (f'<header class="nav nav-{style}"><div class="wrap nav-in"><a class="brand" href="{fname("home")}">{brand}</a>'
-            f'<nav class="links">{links}<a class="btn small" href="#contact">Get started</a></nav>{btn}</div></header>')
-
-
-def _footer(brand, keys, fname):
-    links = "".join(f'<a href="{fname(k)}">{PAGES[k][0]}</a>' for k in keys)
-    return (f'<footer class="foot"><div class="wrap frow"><strong>{brand}</strong><nav>{links}</nav>'
-            f'<small>© 2026 {brand}. All rights reserved.</small></div></footer>')
-
-
-def _head(key):
-    t, s = HEADS[key]
-    return f'<section class="pagehead"><div class="wrap"><h1>{t}</h1><p class="lead">{s}</p></div></section>'
-
-
-def _story(r, topic, brand):
-    return (f'<section class="sec"><div class="wrap two"><div><h2>Our story</h2><p>{brand} started in {r.randint(2009, 2022)} with one idea: '
-            f'{topic} should be easier for everyone. We kept the team small, listened closely and built only what people asked for.</p></div>'
-            '<div class="card"><h3>What we value</h3><ul class="vals"><li>Clear communication</li><li>Fair prices</li><li>Work that lasts</li></ul></div></div></section>')
-
-
-def _team(r):
-    c = "".join(f'<article class="card"><div class="avatar" style="--k:{r.randint(0, 360)}"></div><h3>{n}</h3><p>{t}</p></article>'
-                for n, t in r.sample(NAMES, r.choice([3, 4])))
-    return f'<section class="sec"><div class="wrap"><h2>The team</h2><div class="grid team">{c}</div></div></section>'
-
-
-def _process():
-    steps = [("Tell us your goals", "A short call to understand what you need."), ("We plan and build", "You see progress at every stage."),
-             ("Launch and support", "We stay with you after go-live.")]
-    li = "".join(f"<li><h3>{a}</h3><p>{b}</p></li>" for a, b in steps)
-    return f'<section class="sec"><div class="wrap"><h2>How it works</h2><ol class="steps">{li}</ol></div></section>'
-
-
-def _faq(r):
-    d = "".join(f"<details><summary>{q}</summary><p>{a}</p></details>" for q, a in r.sample(FAQS, r.choice([3, 4])))
-    return f'<section class="sec"><div class="wrap narrow"><h2>Common questions</h2>{d}</div></section>'
-
-
-def _blog(r):
-    c = "".join(f'<article class="card post"><div class="tile" style="--k:{r.randint(0, 360)}"></div><h3>{t}</h3><p>{r.randint(3, 9)} min read</p></article>'
-                for t in r.sample(POSTS, r.choice([3, 4, 6])))
-    return f'<section class="sec"><div class="wrap"><h2>Recent posts</h2><div class="grid">{c}</div></div></section>'
-
-
-def _contact(brand):
-    return ('<section class="sec"><div class="wrap two"><form class="contact-form card" novalidate action="mailto:hello@example.com" method="post" enctype="text/plain">'
-            '<label>Name<input name="name" required></label><label>Email<input type="email" name="email" required></label>'
-            '<label>Message<textarea name="message" rows="5" required></textarea></label>'
-            '<button class="btn" type="submit">Send message</button><p class="note" role="status"></p></form>'
-            f'<div><h3>Visit or call</h3><p>12 Market Street<br>hello@example.com<br>+1 555 0100</p><p>Open Monday to Friday, 9am to 5pm.</p></div></div></section>')
-
-
-EXTRA_CSS = """.links a.on{color:var(--text);font-weight:600}
-.pagehead{padding:calc(var(--pad)*.7) 0 40px;background:var(--surface);border-bottom:1px solid var(--line)}.pagehead h1{font-size:clamp(2rem,4vw,3.2rem)}
-.narrow{max-width:760px}details{border:1px solid var(--line);border-radius:var(--r);padding:14px 18px;margin-bottom:10px;background:var(--surface)}
-summary{cursor:pointer;font-weight:600}details p{margin-top:8px;color:var(--muted)}
-.avatar{width:72px;height:72px;border-radius:50%;margin:0 auto 12px;background:linear-gradient(135deg,hsl(var(--k),65%,55%),hsl(calc(var(--k) + 50),65%,42%))}.team .card{text-align:center}
-.steps{list-style:none;padding:0;counter-reset:s;display:grid;gap:18px}.steps li{counter-increment:s;display:grid;grid-template-columns:48px 1fr;column-gap:16px}
-.steps li::before{content:counter(s);grid-row:span 2;width:44px;height:44px;border-radius:50%;background:var(--a);color:var(--on-a);display:grid;place-items:center;font-weight:700}.steps p{color:var(--muted)}
-.post .tile{height:140px;margin-bottom:14px}.vals{padding-left:18px;color:var(--muted)}
-.contact-form{display:grid;gap:14px}.contact-form label{display:grid;gap:4px;font-weight:600}
-.contact-form input,.contact-form textarea{padding:11px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg);color:var(--text);font:inherit}
-.note{min-height:1.5em}.top-btn{position:fixed;right:18px;bottom:18px;width:46px;height:46px;border-radius:50%;border:0;background:var(--a);color:var(--on-a);font-size:1.2rem;cursor:pointer}
-.theme-btn{background:none;border:1px solid var(--line);color:inherit;border-radius:var(--r);padding:4px 10px;cursor:pointer}
-html.inv{filter:invert(1) hue-rotate(180deg)}
-"""
-
-JS_BASE = """document.documentElement.classList.add('js');
+JS = """document.documentElement.classList.add('js');
 const nav=document.querySelector('.nav'),btn=document.querySelector('.menu-btn');
 if(btn)btn.addEventListener('click',()=>{const o=nav.classList.toggle('open');btn.setAttribute('aria-expanded',o)});
-"""
-JS_MID = """document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{
+document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{
   const t=document.querySelector(a.getAttribute('href'));
   if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth'});nav&&nav.classList.remove('open')}}));
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.15});
 document.querySelectorAll('.sec .card, .gal, .statrow').forEach(el=>{el.classList.add('reveal');io.observe(el)});
 """
-JS_HARD = """const tb=document.createElement('button');tb.className='top-btn';tb.textContent='↑';tb.setAttribute('aria-label','Back to top');tb.hidden=true;document.body.append(tb);
-tb.onclick=()=>scrollTo({top:0,behavior:'smooth'});addEventListener('scroll',()=>{tb.hidden=scrollY<500});
-document.querySelectorAll('.contact-form').forEach(f=>f.addEventListener('submit',e=>{
-  const note=f.querySelector('.note');
-  const bad=[...f.querySelectorAll('[required]')].filter(i=>!i.value.trim()||(i.type==='email'&&!/^\\S+@\\S+\\.\\S+$/.test(i.value)));
-  e.preventDefault();
-  if(bad.length){note.textContent='Please check: '+bad.map(i=>i.name).join(', ')+'.';bad[0].focus()}
-  else{note.textContent='Thanks! Connect this form to your email service to receive messages.';f.reset()}}));
-const tg=document.createElement('button');tg.className='theme-btn';tg.textContent='◐';tg.setAttribute('aria-label','Switch light and dark colors');
-const lk=document.querySelector('.links');if(lk)lk.append(tg);
-try{if(localStorage.inv==='1')document.documentElement.classList.add('inv')}catch(e){}
-tg.onclick=()=>{const on=document.documentElement.classList.toggle('inv');try{localStorage.inv=on?'1':'0'}catch(e){}};
-"""
 
 
-def _js(level):
-    return JS_BASE + (JS_MID if level != "easy" else "") + (JS_HARD if level == "hard" else "")
-
-
-def generate(seed, topic="your business", mood="any", level="medium", pages=None, js=True):
-    """Returns JSON with every page of a multi-page site (files = real files, previews = single-file versions)."""
+def generate(seed, topic="your business", mood="any", sections=None, js=True):
     seed = int(seed)
     r = random.Random(seed)
     topic = (topic or "your business").strip()
     m = MOODS.get(mood, MOODS["any"])
-    keys = ["home"] + [k for k in PAGES if k != "home" and k in (pages or [])]
-    fname = lambda k: "index.html" if k == "home" else k + ".html"
-    brand = (r.choice(PREFIX) + r.choice(SUFFIX)).capitalize()
-    css = _css(r, _palette(r, m["dark"]), m, js) + EXTRA_CSS
-    script = _js(level) if js else ""
-    contact = fname("contact") if "contact" in keys else fname("pricing") if "pricing" in keys else "index.html"
+    chosen = [s for s in ALL_SECTIONS if s in (sections or ALL_SECTIONS)]
+    brand = r.choice(PREFIX) + r.choice(SUFFIX)
+    brand = brand.capitalize()
+    palette = _palette(r, m["dark"])
     build = dict(hero=lambda: _hero(r, topic, brand), features=lambda: _features(r), stats=lambda: _stats(r),
                  gallery=lambda: _gallery(r), testimonials=lambda: _testimonials(r), pricing=lambda: _pricing(r),
-                 cta=_cta, head=lambda: _head(k), story=lambda: _story(r, topic, brand), team=lambda: _team(r),
-                 process=_process, faq=lambda: _faq(r), blog=lambda: _blog(r), contact=lambda: _contact(brand))
-    files, previews = {}, {}
-    for k in keys:
-        secs = _pick(k, level)
-        if k == "home":  # home gets a different section order per seed
-            tail = ["cta"] if secs[-1] == "cta" else []
-            mid = secs[1:len(secs) - len(tail)]
-            r.shuffle(mid)
-            secs = secs[:1] + mid + tail
-        body = "\n".join([_nav(r, brand, js, keys, k, fname)] + [build[s]() for s in secs] + [_footer(brand, keys, fname)])
-        body = body.replace('href="#contact"', f'href="{contact}"').replace('class="btn alt" href="#top"', f'class="btn alt" href="{contact}"')
-        if "services" in keys:
-            body = body.replace('href="#features"', 'href="services.html"')
-        link, tag = '<link rel="stylesheet" href="style.css">', '<script src="script.js"></script>'
-        page = (f'<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
-                f'<meta name="viewport" content="width=device-width,initial-scale=1">\n<title>{PAGES[k][0]} – {brand}</title>\n{link}\n</head>\n'
-                f'<body>\n{body}\n' + (tag + "\n" if js else "") + '</body>\n</html>\n')
-        files[fname(k)] = page
-        previews[fname(k)] = page.replace(link, f"<style>{css}</style>").replace(tag, f"<script>{script}</script>")
-    files["style.css"] = css
-    if js:
-        files["script.js"] = script
-    return json.dumps(dict(seed=seed, brand=brand, pages=[fname(k) for k in keys], files=files, previews=previews))
+                 cta=_cta)
+    middle = [s for s in chosen if s not in ("hero", "cta")]
+    r.shuffle(middle)  # a different section order per seed
+    order = (["hero"] if "hero" in chosen else []) + middle + (["cta"] if "cta" in chosen else [])
+    body = [_nav(r, brand, js)] + [build[s]() for s in order] + [_footer(brand)]
+    css = _css(r, palette, m, js)
+    html_body = "\n".join(body)
+    script = JS if js else ""
+    page = (f'<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+            f'<meta name="viewport" content="width=device-width,initial-scale=1">\n<title>{brand}</title>\n'
+            f'<link rel="stylesheet" href="style.css">\n</head>\n<body>\n{html_body}\n'
+            + ('<script src="script.js"></script>\n' if js else "") + '</body>\n</html>\n')
+    preview = page.replace('<link rel="stylesheet" href="style.css">', f"<style>{css}</style>")
+    preview = preview.replace('<script src="script.js"></script>', f"<script>{script}</script>")
+    return json.dumps(dict(seed=seed, brand=brand, html=page, css=css, js=script, preview=preview))
